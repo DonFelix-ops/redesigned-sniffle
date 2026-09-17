@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Specialist Absence Revenue Impact Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1a2e4a; --blue: #2563eb; --teal: #0891b2;
+    --green: #16a34a; --amber: #d97706; --red: #dc2626;
+    --bg: #f0f4f8; --card: #ffffff; --border: #d1dbe8;
+    --text: #1e293b; --muted: #64748b; --light: #e8f0fe;
+  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .header { background: linear-gradient(135deg, var(--navy) 0%, #1e3a5f 60%, var(--teal) 100%); color: white; padding: 36px 40px 28px; }
+  .header-inner { max-width: 1100px; margin: 0 auto; }
+  .header-tag { display: inline-block; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+  .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  .header p { font-size: 14px; opacity: 0.8; }
+  .header-meta { display: flex; gap: 24px; margin-top: 18px; flex-wrap: wrap; }
+  .header-meta span { font-size: 12px; opacity: 0.7; display: flex; align-items: center; gap: 6px; }
+  .header-meta span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); display: inline-block; }
+
+  /* LAYOUT */
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px; display: grid; grid-template-columns: 1fr 420px; gap: 24px; }
+  @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+
+  /* CARDS */
+  .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 24px; margin-bottom: 20px; }
+  .card:last-child { margin-bottom: 0; }
+  .card-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--navy); margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid var(--light); display: flex; align-items: center; gap: 8px; }
+  .card-title .icon { width: 24px; height: 24px; background: var(--light); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+
+  /* FORM ELEMENTS */
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .field-grid.cols-1 { grid-template-columns: 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select { border: 1.5px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 14px; color: var(--text); background: #fafbfd; transition: border-color 0.2s; font-family: inherit; width: 100%; }
+  input:focus, select:focus { outline: none; border-color: var(--blue); background: white; }
+  .field-hint { font-size: 11px; color: var(--muted); }
+  .currency-wrap { position: relative; }
+  .currency-wrap input { padding-left: 30px; }
+  .currency-sym { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--muted); font-weight: 600; }
+
+  /* TOGGLE */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg); border-radius: 8px; cursor: pointer; }
+  .toggle-row label { font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; text-transform: none; letter-spacing: 0; }
+  .toggle { width: 40px; height: 22px; background: var(--border); border-radius: 11px; position: relative; transition: background 0.2s; cursor: pointer; flex-shrink: 0; }
+  .toggle.on { background: var(--blue); }
+  .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle.on::after { left: 21px; }
+  .conditional { display: none; margin-top: 14px; }
+  .conditional.visible { display: block; }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  /* BUTTON */
+  .calc-btn { width: 100%; background: linear-gradient(135deg, var(--blue), var(--teal)); color: white; border: none; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; letter-spacing: 0.3px; margin-top: 4px; }
+  .calc-btn:hover { opacity: 0.93; }
+  .calc-btn:active { transform: scale(0.99); }
+  .reset-btn { width: 100%; background: transparent; color: var(--muted); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: background 0.2s; }
+  .reset-btn:hover { background: var(--bg); }
+
+  /* RESULTS PANEL */
+  .results-panel { position: sticky; top: 24px; }
+  .results-empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+  .results-empty .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .results-empty p { font-size: 13px; }
+
+  /* RISK BADGE */
+  .risk-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+  .risk-low { background: #dcfce7; color: #15803d; }
+  .risk-medium { background: #fef3c7; color: #92400e; }
+  .risk-high { background: #fee2e2; color: #991b1b; }
+  .risk-critical { background: #581c87; color: white; }
+
+  /* METRIC CARDS */
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .metric { background: var(--bg); border-radius: 10px; padding: 14px; }
+  .metric .m-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 4px; }
+  .metric .m-value { font-size: 20px; font-weight: 800; color: var(--navy); line-height: 1.1; }
+  .metric .m-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .metric.highlight { background: var(--navy); }
+  .metric.highlight .m-label { color: rgba(255,255,255,0.6); }
+  .metric.highlight .m-value { color: white; }
+  .metric.highlight .m-sub { color: rgba(255,255,255,0.5); }
+  .metric.warn { background: #fff7ed; border: 1px solid #fed7aa; }
+  .metric.warn .m-value { color: var(--amber); }
+
+  /* BREAKDOWN TABLE */
+  .breakdown { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .breakdown th { background: var(--navy); color: white; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .breakdown td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+  .breakdown tr:last-child td { border-bottom: none; }
+  .breakdown tr:nth-child(even) td { background: #fafbfd; }
+  .breakdown .total-row td { font-weight: 700; background: var(--light) !important; color: var(--navy); border-top: 2px solid var(--blue); }
+  .breakdown .neg { color: var(--red); font-weight: 600; }
+  .breakdown .pos { color: var(--green); font-weight: 600; }
+  .breakdown .neutral { color: var(--muted); }
+
+  /* CHART */
+  .chart-wrap { position: relative; height: 180px; margin: 12px 0; }
+
+  /* RECOMMENDATIONS */
+  .rec-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .rec-item:last-child { border-bottom: none; }
+  .rec-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .rec-dot.red { background: var(--red); }
+  .rec-dot.amber { background: var(--amber); }
+  .rec-dot.green { background: var(--green); }
+  .rec-text { color: var(--text); line-height: 1.5; }
+
+  /* PRINT */
+  @media print {
+    .left-col { display: none; }
+    .container { grid-template-columns: 1fr; }
+    .results-panel { position: static; }
+    .calc-btn, .reset-btn { display: none; }
+    body { background: white; }
+    .card { box-shadow: none; border: 1px solid #ddd; }
+  }
+
+  /* FOOTER */
+  .footer { text-align: center; padding: 20px; color: var(--muted); font-size: 11.5px; border-top: 1px solid var(--border); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-tag">HR &amp; Finance Decision Tool</div>
+    <h1>Specialist Absence Revenue Impact Calculator</h1>
+    <p>Quantify the true financial cost of a specialist going on leave, extended absence, or resignation.</p>
+    <div class="header-meta">
+      <span>Decision Makers: HR Manager · Finance Director</span>
+      <span>Scope: OPD, Procedures &amp; Locum Coverage</span>
+      <span>Output: Revenue at Risk · Net Financial Exposure</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- LEFT: INPUTS -->
+  <div class="left-col">
+
+    <!-- Specialist Info -->
+    <div class="card">
+      <div class="card-title"><span class="icon">👤</span> Specialist Details</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Specialist Name</label>
+          <input type="text" id="specName" placeholder="e.g. Dr. A. Hassan">
+        </div>
+        <div class="field">
+          <label>Specialty / Department</label>
+          <input type="text" id="specDept" placeholder="e.g. Cardiology">
+        </div>
+      </div>
+      <div class="field-grid cols-1" style="margin-top:14px;">
+        <div class="field">
+          <label>Absence Type</label>
+          <select id="absenceType" onchange="toggleAbsenceFields()">
+            <option value="annual">Annual Leave</option>
+            <option value="sick">Extended Sick Leave</option>
+            <option value="unpaid">Unpaid / Study Leave</option>
+            <option value="resignation">Resignation / Permanent Departure</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Absence Period -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📅</span> Absence Period</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Start Date</label>
+          <input type="date" id="startDate">
+        </div>
+        <div class="field">
+          <label>Working Days Absent</label>
+          <input type="number" id="daysAbsent" min="1" max="365" placeholder="e.g. 20">
+          <span class="field-hint">Exclude weekends &amp; public holidays</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue Parameters -->
+    <div class="card">
+      <div class="card-title"><span class="icon">💰</span> Revenue Parameters</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Currency</label>
+          <select id="currency">
+            <option value="$">USD ($)</option>
+            <option value="£">GBP (£)</option>
+            <option value="€">EUR (€)</option>
+            <option value="KES">KES</option>
+            <option value="NGN">NGN</option>
+            <option value="ZAR">ZAR</option>
+            <option value="SOS">SOS</option>
+            <option value="ETB">ETB</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>OPD Consultations / Day</label>
+          <input type="number" id="consPerDay" min="0" placeholder="e.g. 15">
+        </div>
+        <div class="field">
+          <label>Revenue / OPD Consult</label>
+          <div class="currency-wrap">
+            <span class="currency-sym" id="sym1">$</span>
+            <input type="number" id="revenuePerCons" min="0" placeholder="e.g. 40">
+          </div>
+        </div>
+        <div class="field">
+          <label>Procedures / Day</label>
+          <input type="number" id="procsPerDay" min="0" placeholder="e.g. 2" value="0">
+          <span class="field-hint">Surgeries, interventions, etc.</span>
+        </div>
+        <div class="field">
+          <label>Revenue / Procedure</label>
+          <div class="currency-wrap">
+            <span class="currency-sym" id="sym2">$</span>
+            <input type="number" id="revenuePerProc" min="0" placeholder="e.g. 300" value="0">
+          </div>
+        </div>
+        <div class="field">
+          <label>Indirect Revenue Loss %</label>
+          <input type="number" id="indirectPct" min="0" max="50" placeholder="e.g. 10" value="10">
+          <span class="field-hint">Referral diversion, downstream loss</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Locum Coverage -->
+    <div class="card">
+      <div class="card-title"><span class="icon">🔄</span> Locum / Cover Arrangement</div>
+      <div class="toggle-row" onclick="toggleLocum()">
+        <label>Locum / covering doctor engaged?</label>
+        <div class="toggle" id="locumToggle"></div>
+      </div>
+      <div class="conditional" id="locumFields">
+        <div class="field-grid" style="margin-top:0;">
+          <div class="field">
+            <label>Locum Daily Rate</label>
+            <div class="currency-wrap">
+              <span class="currency-sym" id="sym3">$</span>
+              <input type="number" id="locumRate" min="0" placeholder="e.g. 250">
+            </div>
+          </div>
+          <div class="field">
+            <label>Locum Efficiency %</label>
+            <input type="number" id="locumEff" min="10" max="100" placeholder="e.g. 70" value="70">
+            <span class="field-hint">% of usual volume delivered by locum</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resignation-specific -->
+    <div class="card" id="resignCard" style="display:none;">
+      <div class="card-title"><span class="icon">🚪</span> Resignation — Replacement Costs</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Recruitment Cost</label>
+          <div class="currency-wrap">
+            <span class="currency-sym" id="sym4">$</span>
+            <input type="number" id="recruitCost" min="0" placeholder="e.g. 5000">
+          </div>
+          <span class="field-hint">Agency fees, advertising, relocation</span>
+        </div>
+        <div class="field">
+          <label>Weeks to Replace</label>
+          <input type="number" id="weeksToReplace" min="0" placeholder="e.g. 12">
+        </div>
+        <div class="field">
+          <label>Onboarding / Ramp-up Weeks</label>
+          <input type="number" id="onboardWeeks" min="0" placeholder="e.g. 4" value="4">
+          <span class="field-hint">Reduced productivity during ramp-up</span>
+        </div>
+        <div class="field">
+          <label>Ramp-up Productivity %</label>
+          <input type="number" id="rampPct" min="0" max="100" placeholder="e.g. 60" value="60">
+        </div>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <button class="calc-btn" onclick="calculate()">&#9654;&nbsp; Calculate Revenue Impact</button>
+    <button class="reset-btn" onclick="resetForm()">Reset</button>
+  </div>
+
+  <!-- RIGHT: RESULTS -->
+  <div class="results-panel">
+    <div id="resultsEmpty" class="card results-empty">
+      <div class="empty-icon">📊</div>
+      <p><strong>Fill in the inputs and click Calculate</strong><br>to see the full financial impact.</p>
+    </div>
+
+    <div id="resultsContent" style="display:none;">
+
+      <!-- Summary card -->
+      <div class="card" id="summaryCard">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+          <div>
+            <div style="font-size:13px; color:var(--muted); margin-bottom:3px;" id="resSpecLabel"></div>
+            <div style="font-size:16px; font-weight:800; color:var(--navy);" id="resTitle"></div>
+          </div>
+          <div id="riskBadge"></div>
+        </div>
+        <div class="metric-grid" id="metricGrid"></div>
+      </div>
+
+      <!-- Breakdown table -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> Cost Breakdown</div>
+        <table class="breakdown" id="breakdownTable"></table>
+      </div>
+
+      <!-- Chart -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📈</span> Revenue at Risk — Components</div>
+        <div class="chart-wrap">
+          <canvas id="impactChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="card">
+        <div class="card-title"><span class="icon">💡</span> Recommendations</div>
+        <div id="recsContainer"></div>
+      </div>
+
+      <!-- Print -->
+      <button class="reset-btn" onclick="window.print()" style="margin-top:0;">🖨 Print / Save as PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Specialist Absence Revenue Impact Calculator &nbsp;·&nbsp; For HR &amp; Finance decision-making &nbsp;·&nbsp; Results are estimates based on inputs provided
+</div>
+
+<script>
+let locumOn = false;
+let chartInst = null;
+
+document.getElementById('currency').addEventListener('change', function(){
+  const sym = this.value.length > 1 ? this.value+' ' : this.value;
+  ['sym1','sym2','sym3','sym4'].forEach(id => document.getElementById(id).textContent = sym.trim().charAt(0)==='$'?'$': sym.length>2?'':sym);
+  updateSymbols();
+});
+
+function updateSymbols(){
+  const v = document.getElementById('currency').value;
+  const s = v.length > 2 ? v[0] : v;
+  ['sym1','sym2','sym3','sym4'].forEach(id => document.getElementById(id).textContent = s);
+}
+
+function toggleLocum(){
+  locumOn = !locumOn;
+  document.getElementById('locumToggle').classList.toggle('on', locumOn);
+  document.getElementById('locumFields').classList.toggle('visible', locumOn);
+}
+
+function toggleAbsenceFields(){
+  const type = document.getElementById('absenceType').value;
+  document.getElementById('resignCard').style.display = type === 'resignation' ? 'block' : 'none';
+}
+
+function fmt(n, cur){
+  const sym = cur.length > 2 ? cur + ' ' : cur;
+  return sym + n.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+
+function getRisk(total){
+  if(total < 10000) return {label:'Low', cls:'risk-low'};
+  if(total < 50000) return {label:'Medium', cls:'risk-medium'};
+  if(total < 150000) return {label:'High', cls:'risk-high'};
+  return {label:'Critical', cls:'risk-critical'};
+}
+
+function calculate(){
+  const days = parseFloat(document.getElementById('daysAbsent').value) || 0;
+  const cpd = parseFloat(document.getElementById('consPerDay').value) || 0;
+  const rpc = parseFloat(document.getElementById('revenuePerCons').value) || 0;
+  const ppd = parseFloat(document.getElementById('procsPerDay').value) || 0;
+  const rpp = parseFloat(document.getElementById('revenuePerProc').value) || 0;
+  const indir = parseFloat(document.getElementById('indirectPct').value) || 0;
+  const cur = document.getElementById('currency').value;
+  const specName = document.getElementById('specName').value || 'Specialist';
+  const specDept = document.getElementById('specDept').value || '';
+  const absType = document.getElementById('absenceType').value;
+
+  if(!days || (!cpd && !ppd)) {
+    alert('Please enter at least the number of days absent and daily patient volume.');
+    return;
+  }
+
+  // Core revenue
+  const consLost = days * cpd;
+  const consRevLost = consLost * rpc;
+  const procsLost = days * ppd;
+  const procRevLost = procsLost * rpp;
+  const directRevLost = consRevLost + procRevLost;
+  const indirectLoss = directRevLost * (indir / 100);
+  const grossRevLost = directRevLost + indirectLoss;
+
+  // Locum
+  let locumCost = 0, locumRecovery = 0;
+  if(locumOn){
+    const lRate = parseFloat(document.getElementById('locumRate').value) || 0;
+    const lEff = parseFloat(document.getElementById('locumEff').value) || 70;
+    locumCost = lRate * days;
+    locumRecovery = directRevLost * (lEff / 100);
+  }
+
+  // Net impact
+  const netImpact = grossRevLost - locumRecovery + locumCost;
+
+  // Resignation extras
+  let recruitCost = 0, replacementRevLoss = 0;
+  if(absType === 'resignation'){
+    recruitCost = parseFloat(document.getElementById('recruitCost').value) || 0;
+    const wReplace = parseFloat(document.getElementById('weeksToReplace').value) || 0;
+    const wOnboard = parseFloat(document.getElementById('onboardWeeks').value) || 4;
+    const rampPct = parseFloat(document.getElementById('rampPct').value) || 60;
+    const totalGapDays = wReplace * 5;
+    const rampDays = wOnboard * 5;
+    const fullGapRevLoss = totalGapDays * (cpd * rpc + ppd * rpp);
+    const rampRevLoss = rampDays * (cpd * rpc + ppd * rpp) * ((100 - rampPct) / 100);
+    replacementRevLoss = fullGapRevLoss + rampRevLoss;
+  }
+
+  const totalExposure = netImpact + recruitCost + replacementRevLoss;
+
+  // RENDER RESULTS
+  document.getElementById('resultsEmpty').style.display = 'none';
+  document.getElementById('resultsContent').style.display = 'block';
+
+  document.getElementById('resSpecLabel').textContent = specDept ? `${specDept} Department` : 'Specialist';
+  document.getElementById('resTitle').textContent = `${specName} — ${days} Working Day Absence`;
+
+  const risk = getRisk(totalExposure);
+  document.getElementById('riskBadge').innerHTML = `<span class="risk-badge ${risk.cls}">● ${risk.label} Risk</span>`;
+
+  // Metrics
+  const mg = document.getElementById('metricGrid');
+  mg.innerHTML = `
+    <div class="metric highlight">
+      <div class="m-label">Total Financial Exposure</div>
+      <div class="m-value">${fmt(totalExposure, cur)}</div>
+      <div class="m-sub">All costs combined</div>
+    </div>
+    <div class="metric warn">
+      <div class="m-label">Gross Revenue at Risk</div>
+      <div class="m-value">${fmt(grossRevLost, cur)}</div>
+      <div class="m-sub">Direct + indirect loss</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">Consultations Lost</div>
+      <div class="m-value">${consLost.toLocaleString()}</div>
+      <div class="m-sub">OPD visits</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">Procedures Lost</div>
+      <div class="m-value">${procsLost.toLocaleString()}</div>
+      <div class="m-sub">Surgeries / interventions</div>
+    </div>
+  `;
+
+  // Breakdown table
+  const rows = [
+    ['OPD consultation revenue lost', `${consLost.toFixed(0)} consults × ${fmt(rpc,cur)}`, fmt(consRevLost,cur), 'neg'],
+    ['Procedure revenue lost', `${procsLost.toFixed(0)} procedures × ${fmt(rpp,cur)}`, fmt(procRevLost,cur), 'neg'],
+    ['Indirect / downstream loss', `${indir}% of direct revenue`, fmt(indirectLoss,cur), 'neg'],
+  ];
+  if(locumOn){
+    rows.push(['Locum fees', `${days} days × ${fmt(parseFloat(document.getElementById('locumRate').value)||0,cur)}/day`, fmt(locumCost,cur), 'neg']);
+    rows.push(['Revenue recovered by locum', `${document.getElementById('locumEff').value}% efficiency`, `(${fmt(locumRecovery,cur)})`, 'pos']);
+  }
+  if(absType === 'resignation'){
+    if(recruitCost) rows.push(['Recruitment & onboarding cost', 'Agency, advertising, relocation', fmt(recruitCost,cur), 'neg']);
+    if(replacementRevLoss) rows.push(['Revenue loss during replacement period', 'Gap + ramp-up productivity loss', fmt(replacementRevLoss,cur), 'neg']);
+  }
+  rows.push(['TOTAL FINANCIAL EXPOSURE', '', fmt(totalExposure,cur), 'total']);
+
+  const t = document.getElementById('breakdownTable');
+  t.innerHTML = `<thead><tr><th>Component</th><th>Basis</th><th>Amount</th></tr></thead><tbody>` +
+    rows.map(r => r[3]==='total'
+      ? `<tr class="total-row"><td><strong>${r[0]}</strong></td><td>${r[1]}</td><td><strong>${r[2]}</strong></td></tr>`
+      : `<tr><td>${r[0]}</td><td class="neutral">${r[1]}</td><td class="${r[3]}">${r[2]}</td></tr>`
+    ).join('') + '</tbody>';
+
+  // Chart
+  const chartData = {
+    labels: ['OPD Revenue', 'Procedure Revenue', 'Indirect Loss',
+      ...(locumOn ? ['Locum Cost'] : []),
+      ...(absType==='resignation' && recruitCost ? ['Recruitment'] : []),
+      ...(absType==='resignation' && replacementRevLoss ? ['Replacement Gap'] : []),
+    ],
+    values: [consRevLost, procRevLost, indirectLoss,
+      ...(locumOn ? [locumCost] : []),
+      ...(absType==='resignation' && recruitCost ? [recruitCost] : []),
+      ...(absType==='resignation' && replacementRevLoss ? [replacementRevLoss] : []),
+    ],
+    colors: ['#dc2626','#d97706','#7c3aed','#2563eb','#0891b2','#16a34a']
+  };
+
+  if(chartInst) chartInst.destroy();
+  const ctx = document.getElementById('impactChart').getContext('2d');
+  chartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: chartData.labels,
+      datasets: [{
+        data: chartData.values,
+        backgroundColor: chartData.colors.slice(0, chartData.labels.length),
+        borderRadius: 6, borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw, cur) } }
+      },
+      scales: {
+        y: { ticks: { callback: v => fmt(v,cur), font:{size:10} }, grid:{color:'#e8f0fe'} },
+        x: { ticks: { font:{size:10} }, grid:{ display:false } }
+      }
+    }
+  });
+
+  // Recommendations
+  const recs = [];
+  const daily = (cpd*rpc + ppd*rpp);
+  if(!locumOn && days > 5) recs.push({dot:'red', text:`No locum is engaged. At ${fmt(daily,cur)}/day in lost revenue, a covering doctor is strongly recommended.`});
+  if(locumOn && parseFloat(document.getElementById('locumEff').value||0) < 60) recs.push({dot:'amber', text:'Locum efficiency is below 60%. Consider pre-briefing the locum on patient load and protocols to improve throughput.'});
+  if(indir >= 15) recs.push({dot:'amber', text:`A ${indir}% indirect loss factor is significant. Consider proactive patient communication to reduce referral diversion.`});
+  if(absType === 'resignation') recs.push({dot:'red', text:'Resignation creates a compounding risk. Initiate recruitment immediately and explore internal rotations to bridge the gap.'});
+  if(totalExposure > 50000) recs.push({dot:'red', text:`Total exposure of ${fmt(totalExposure,cur)} warrants escalation to the Board / Finance Committee for contingency planning.`});
+  if(days >= 20 && absType !== 'resignation') recs.push({dot:'amber', text:'For absences exceeding 4 weeks, consider partial service continuity — tele-consults or shared specialist sessions from partner facilities.'});
+  recs.push({dot:'green', text:'Document this analysis in the staff leave approval process to build a financial case for specialist succession planning.'});
+
+  document.getElementById('recsContainer').innerHTML = recs.map(r =>
+    `<div class="rec-item"><div class="rec-dot ${r.dot}"></div><div class="rec-text">${r.text}</div></div>`
+  ).join('');
+
+  document.getElementById('resultsContent').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function resetForm(){
+  document.querySelectorAll('input, select').forEach(el => {
+    if(el.type === 'number') el.value = '';
+    else if(el.type === 'date') el.value = '';
+    else if(el.tagName === 'SELECT') el.selectedIndex = 0;
+    else el.value = '';
+  });
+  document.getElementById('consPerDay').value = '';
+  document.getElementById('procsPerDay').value = '0';
+  document.getElementById('revenuePerProc').value = '0';
+  document.getElementById('indirectPct').value = '10';
+  document.getElementById('locumEff').value = '70';
+  document.getElementById('onboardWeeks').value = '4';
+  document.getElementById('rampPct').value = '60';
+  locumOn = false;
+  document.getElementById('locumToggle').classList.remove('on');
+  document.getElementById('locumFields').classList.remove('visible');
+  document.getElementById('resignCard').style.display = 'none';
+  document.getElementById('resultsEmpty').style.display = 'block';
+  document.getElementById('resultsContent').style.display = 'none';
+  if(chartInst){ chartInst.destroy(); chartInst = null; }
+}
+
+// Set default date to today
+document.getElementById('startDate').valueAsDate = new Date();
+</script>
+</body>
+</html>
